@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PC Monitor</title>
+<style>
+:root{
+  --bg:#0b0f17; --panel:#121826; --panel2:#171f30; --line:#232c40; --text:#e6ebf5; --muted:#8a94a8;
+  --cpu:#5b8cff; --ram:#a26bff; --gpu:#22c55e; --disk:#f59e0b; --net:#06b6d4; --up:#f472b6;
+  --danger:#ef4444; --ok:#22c55e; --warn:#f59e0b; --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI Variable","Segoe UI",system-ui,sans-serif}
+body{padding:20px 24px 40px;max-width:1600px;margin:0 auto}
+header{display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--cpu),var(--ram));display:grid;place-items:center;font-weight:700}
+h1{font-size:20px;margin:0;font-weight:650;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:12.5px}
+.live{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);background:var(--panel);border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:pulse 2s infinite}
+.dot.off{background:var(--danger);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;min-width:0}
+.card h3{margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}
+.card h3 .tag{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted)}
+.kpi{display:flex;gap:14px;align-items:center}
+.ring{width:74px;height:74px;flex:none;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring .v{position:absolute;inset:0;display:grid;place-items:center;font-weight:650;font-size:16px}
+.kpi .meta{min-width:0;flex:1}
+.kpi .big{font-size:22px;font-weight:650}
+.kpi .small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spark{width:100%;height:34px;display:block;margin-top:6px}
+.row2{grid-template-columns:2fr 1fr;margin-bottom:16px}
+.row3{grid-template-columns:1fr 1fr 1fr;margin-bottom:16px}
+@media(max-width:1100px){.row2,.row3{grid-template-columns:1fr}}
+canvas.chart{width:100%;height:220px;display:block}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-left:auto;text-transform:none;letter-spacing:0}
+.legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.cores{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px}
+.core{background:var(--panel2);border-radius:8px;padding:6px;text-align:center;font-size:11px;color:var(--muted)}
+.core .bar{height:44px;background:#0e1420;border-radius:5px;position:relative;overflow:hidden;margin-bottom:4px}
+.core .bar div{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,var(--cpu),#8fb0ff);transition:height .5s}
+.core b{color:var(--text);font-weight:600}
+.bar-h{height:8px;background:#0e1420;border-radius:99px;overflow:hidden}
+.bar-h div{height:100%;border-radius:99px;transition:width .5s}
+.disk{margin-bottom:14px}
+.disk .top{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px}
+.disk .top span{color:var(--muted);font-size:12px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--panel2);border-radius:10px;padding:10px 12px}
+.stat .l{font-size:11.5px;color:var(--muted)}
+.stat .n{font-size:16px;font-weight:600;margin-top:2px}
+.info dl{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:0;font-size:13px}
+.info dt{color:var(--muted)}
+.info dd{margin:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* processus */
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.search{flex:1;min-width:200px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 12px;font:inherit;outline:none}
+.search:focus{border-color:var(--cpu)}
+.toggle{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--cpu)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;user-select:none}
+th.num,td.num{text-align:right}
+th.sorted{color:var(--text)}
+td{padding:9px 10px;border-bottom:1px solid #1a2233;white-space:nowrap}
+tr.grp:hover td{background:#151d2c}
+tr.child td{background:#0f1521;color:var(--muted);font-size:12.5px}
+.pname{display:flex;align-items:center;gap:10px;max-width:340px}
+.pname .ico{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none;color:#fff}
+.pname .t{overflow:hidden;text-overflow:ellipsis}
+.pname .cnt{font-size:11px;color:var(--muted);background:var(--panel2);border-radius:99px;padding:1px 7px}
+.caret{width:16px;color:var(--muted);cursor:pointer;flex:none;transition:transform .2s;display:inline-block}
+.caret.open{transform:rotate(90deg)}
+.badge.nv{background:rgba(118,185,0,.16);color:#9be15d}
+.btn.gpu:hover{border-color:#76b900;background:#76b900;color:#0b0f17}
+.btn.gpu.on{border-color:rgba(118,185,0,.5);color:#9be15d}
+.gopt{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;margin-bottom:8px}
+.gopt:hover{background:var(--panel2)}
+.gopt input{accent-color:#76b900;margin-top:3px}
+.gopt b{display:block}.gopt span{font-size:12px;color:var(--muted)}
+.badge{font-size:10.5px;padding:2px 7px;border-radius:99px;background:rgba(91,140,255,.15);color:#9db8ff}
+.cell-bar{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;width:100%}
+.cell-bar .mini{width:46px;height:5px;background:#0e1420;border-radius:9px;overflow:hidden}
+.cell-bar .mini div{height:100%}
+.heat-1{color:#fbbf24}.heat-2{color:#f87171}
+.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:8px;padding:5px 11px;font:inherit;font-size:12.5px;cursor:pointer;transition:.15s}
+.btn:hover{border-color:var(--danger);color:#fff;background:var(--danger)}
+.btn.ghost:hover{border-color:var(--cpu);background:transparent;color:var(--text)}
+.empty{text-align:center;color:var(--muted);padding:30px}
+/* modal + toast */
+.modal{position:fixed;inset:0;background:rgba(3,6,12,.65);backdrop-filter:blur(4px);display:none;place-items:center;z-index:10}
+.modal.show{display:grid}
+.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;width:min(420px,92vw)}
+.modal h4{margin:0 0 8px;font-size:17px}
+.modal p{color:var(--muted);margin:0 0 18px}
+.modal .act{display:flex;gap:10px;justify-content:flex-end}
+.btn.red{background:var(--danger);border-color:var(--danger);color:#fff}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--ok);padding:12px 16px;border-radius:10px;transform:translateY(120px);opacity:0;transition:.3s;z-index:20;max-width:360px}
+.toast.show{transform:none;opacity:1}
+.toast.err{border-left-color:var(--danger)}
+.gpu-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.gpu-head b{font-size:14px}
+.muted{color:var(--muted)}
+/* onglets */
+.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;margin-left:24px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13.5px;padding:7px 16px;border-radius:9px;cursor:pointer}
+.tabs button.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+.view{display:none}.view.on{display:block}
+/* nettoyage */
+.hero{display:flex;align-items:center;gap:28px;padding:26px 28px;margin-bottom:16px;
+  background:radial-gradient(1200px 300px at 0% 0%,rgba(91,140,255,.18),transparent),radial-gradient(800px 300px at 100% 100%,rgba(162,107,255,.16),transparent),var(--panel)}
+.hero .big{font-size:40px;font-weight:700;letter-spacing:-.5px}
+.hero p{margin:4px 0 0;color:var(--muted)}
+.hero .act{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.btn.primary{background:linear-gradient(135deg,var(--cpu),var(--ram));border:0;color:#fff;padding:11px 22px;font-size:14px;font-weight:600;border-radius:11px}
+.btn.primary:hover{filter:brightness(1.1);background:linear-gradient(135deg,var(--cpu),var(--ram))}
+.btn.primary:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.soft{padding:11px 18px;border-radius:11px}
+.btn.soft:hover{border-color:var(--cpu);background:var(--panel2)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn.sm.blue:hover{border-color:var(--cpu);background:var(--cpu)}
+.grp-t{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin:16px 0 6px;font-weight:600}
+.jrow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer}
+.jrow:hover{background:var(--panel2)}
+.jrow input{accent-color:var(--cpu);width:16px;height:16px;flex:none}
+.jrow .n{flex:1;min-width:0}
+.jrow .n b{font-weight:600}.jrow .n div{font-size:12px;color:var(--muted)}
+.jrow .s{font-weight:600;font-variant-numeric:tabular-nums}
+.warn{font-size:10.5px;padding:2px 7px;border-radius:99px;background:rgba(245,158,11,.15);color:#fbbf24}
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:sp 0.8s linear infinite;display:inline-block;vertical-align:-3px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+select.search{flex:none;min-width:0;width:auto}
+.switch{position:relative;width:38px;height:22px;flex:none;display:inline-block}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:#2a3348;border-radius:99px;transition:.2s;cursor:pointer}
+.switch span:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+span{background:var(--ok)}
+.switch input:checked+span:before{transform:translateX(16px)}
+#onboard{position:fixed;inset:0;z-index:30;display:none;place-items:center;overflow:auto;padding:24px 16px;
+  background:radial-gradient(900px 500px at 20% 0%,rgba(91,140,255,.22),transparent),radial-gradient(900px 500px at 100% 100%,rgba(162,107,255,.2),transparent),var(--bg)}
+#onboard.show{display:grid}
+.ob-box{max-width:560px;width:100%;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:34px 30px}
+.ob-box h2{margin:0 0 8px;font-size:26px;letter-spacing:-.3px}
+.ob-steps{text-align:left;margin:24px 0 18px;padding-left:22px;display:grid;gap:12px;font-size:13.5px}
+.ob-steps code{background:var(--panel2);padding:1px 6px;border-radius:5px}
+.ob-wait{display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:13px;background:var(--panel2);padding:8px 14px;border-radius:99px}
+.cmd{max-width:520px;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-size:12px;font-family:Consolas,monospace}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">◈</div>
+  <div>
+    <h1 id="host">PC Monitor</h1>
+    <div class="sub" id="osinfo">Connexion…</div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-v="dash" class="on">Surveillance</button>
+    <button data-v="clean">Nettoyage</button>
+    <button data-v="startup">Démarrage</button>
+  </nav>
+  <div class="live"><span class="dot" id="dot"></span><span id="livetxt">En direct</span> · <span id="uptime">—</span></div>
+</header>
+
+<main class="view on" id="view-dash">
+
+<!-- KPI -->
+<section class="grid kpis">
+  <div class="card"><h3>Processeur <span class="tag" id="k-cpu-f"></span></h3>
+    <div class="kpi"><div class="ring" id="r-cpu"></div><div class="meta"><div class="big" id="k-cpu">—</div><div class="small" id="k-cpu-s">—</div><canvas class="spark" id="s-cpu"></canvas></div></div></div>
+  <div class="card"><h3>Mémoire RAM <span class="tag" id="k-ram-t"></span></h3>
+    <div class="kpi"><div class="ring" id="r-ram"></div><div class="meta"><div class="big" id="k-ram">—</div><div class="small" id="k-ram-s">—</div><canvas class="spark" id="s-ram"></canvas></div></div></div>
+  <div class="card"><h3>GPU <span class="tag" id="k-gpu-t"></span></h3>
+    <div class="kpi"><div class="ring" id="r-gpu"></div><div class="meta"><div class="big" id="k-gpu">—</div><div class="small" id="k-gpu-s">—</div><canvas class="spark" id="s-gpu"></canvas></div></div></div>
+  <div class="card"><h3>Disque <span class="tag" id="k-disk-t"></span></h3>
+    <div class="kpi"><div class="ring" id="r-disk"></div><div class="meta"><div class="big" id="k-disk">—</div><div class="small" id="k-disk-s">—</div><canvas class="spark" id="s-disk"></canvas></div></div></div>
+  <div class="card"><h3>Réseau <span class="tag" id="k-net-t"></span></h3>
+    <div class="kpi"><div class="meta"><div class="big"><span style="color:var(--net)">↓</span> <span id="k-down">—</span></div><div class="small"><span style="color:var(--up)">↑</span> <span id="k-up">—</span></div><canvas class="spark" id="s-net"></canvas></div></div></div>
+</section>
+
+<!-- Graphiques -->
+<section class="grid row2">
+  <div class="card"><h3>Historique d'utilisation
+    <span class="legend"><span><i style="background:var(--cpu)"></i>CPU</span><span><i style="background:var(--ram)"></i>RAM</span><span><i style="background:var(--gpu)"></i>GPU</span></span></h3>
+    <canvas class="chart" id="c-usage"></canvas></div>
+  <div class="card"><h3>Cœurs CPU <span class="tag" id="cores-t"></span></h3><div class="cores" id="cores"></div></div>
+</section>
+
+<section class="grid row3">
+  <div class="card"><h3>Trafic réseau
+    <span class="legend"><span><i style="background:var(--net)"></i>Réception</span><span><i style="background:var(--up)"></i>Envoi</span></span></h3>
+    <canvas class="chart" id="c-net" style="height:170px"></canvas>
+    <div class="stats" style="margin-top:12px">
+      <div class="stat"><div class="l">Total reçu</div><div class="n" id="n-recv">—</div></div>
+      <div class="stat"><div class="l">Total envoyé</div><div class="n" id="n-sent">—</div></div>
+      <div class="stat"><div class="l">Connexions actives</div><div class="n" id="n-conn">—</div></div>
+      <div class="stat"><div class="l">Adresse IP</div><div class="n" id="n-ip" style="font-size:14px">—</div></div>
+    </div></div>
+  <div class="card"><h3>Stockage
+    <span class="legend"><span><i style="background:var(--disk)"></i>Lecture</span><span><i style="background:#fb7185"></i>Écriture</span></span></h3>
+    <div id="disks"></div>
+    <canvas class="chart" id="c-disk" style="height:110px"></canvas></div>
+  <div class="card"><h3>Carte graphique</h3><div id="gpu-detail" class="muted">Chargement…</div></div>
+</section>
+
+<section class="grid row2">
+  <div class="card">
+    <h3>Applications en cours <span class="tag" id="proc-count"></span></h3>
+    <div class="toolbar">
+      <input class="search" id="q" placeholder="Rechercher une application…">
+      <label class="toggle"><input type="checkbox" id="onlywin"> Avec fenêtre uniquement</label>
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th data-k="name">Application</th>
+        <th data-k="cpu" class="num">CPU</th>
+        <th data-k="mem" class="num">Mémoire</th>
+        <th data-k="gpu" class="num">GPU</th>
+        <th data-k="io" class="num">Disque</th>
+        <th data-k="started" class="num">Durée</th>
+        <th class="num" style="cursor:default"></th>
+      </tr></thead>
+      <tbody id="procs"><tr><td colspan="7" class="empty">Chargement…</td></tr></tbody>
+    </table></div>
+  </div>
+  <div class="grid" style="align-content:start">
+    <div class="card info"><h3>Système <span class="tag"><button class="btn sm" id="btn-quit" title="Arrête l'agent sur ce PC">Arrêter l'agent</button></span></h3><dl id="sysinfo"></dl></div>
+    <div class="card"><h3>Mémoire détaillée</h3><div class="stats" id="memdetail"></div></div>
+    <div class="card" id="bat-card" style="display:none"><h3>Batterie</h3><div id="bat"></div></div>
+  </div>
+</section>
+</main>
+
+<!-- ========================= NETTOYAGE ========================= -->
+<main class="view" id="view-clean">
+  <section class="card hero">
+    <div class="ring" id="r-clean" style="width:96px;height:96px"></div>
+    <div>
+      <div class="big" id="junk-total">Analyse intelligente</div>
+      <p id="junk-sub">Recherche des fichiers inutiles : caches, fichiers temporaires, corbeille, rapports d'erreurs…</p>
+    </div>
+    <div class="act">
+      <button class="btn soft" id="btn-scan">Analyser</button>
+      <button class="btn primary" id="btn-clean" disabled>Nettoyer</button>
+    </div>
+  </section>
+
+  <section class="grid row2">
+    <div class="card"><h3>Fichiers inutiles <span class="tag" id="junk-sel"></span></h3>
+      <div id="junk-list" class="muted" style="padding:6px 2px">Lancez une analyse pour voir ce qui peut être supprimé.</div>
+      <div id="admin-note" class="muted" style="font-size:12px;margin-top:12px;display:none">
+        ⓘ Certains éléments système demandent les droits administrateur : relancez <b>Lancer_PC_Monitor.bat</b> via « Exécuter en tant qu'administrateur » pour les nettoyer entièrement.</div>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Libérer la mémoire <span class="tag" id="ram-t"></span></h3>
+        <div class="kpi"><div class="ring" id="r-ram2"></div>
+          <div class="meta"><div class="big" id="ram-av">—</div><div class="small">disponibles</div></div>
+          <button class="btn primary" id="btn-ram">Libérer la RAM</button></div>
+        <div id="ram-res" class="muted" style="font-size:12.5px;margin-top:10px"></div>
+        <div class="grp-t">Applications en arrière-plan gourmandes</div>
+        <div id="bg-apps" class="muted" style="font-size:13px">—</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Gros fichiers <span class="tag" id="large-t"></span></h3>
+    <div class="toolbar">
+      <span class="muted" style="font-size:13px">Dans votre dossier utilisateur, fichiers de plus de</span>
+      <select class="search" id="large-min"><option value="100">100 Mo</option><option value="200" selected>200 Mo</option><option value="500">500 Mo</option><option value="1024">1 Go</option></select>
+      <button class="btn soft" id="btn-large" style="padding:8px 16px">Rechercher</button>
+      <button class="btn" id="btn-large-del" style="margin-left:auto;display:none">Mettre à la corbeille</button>
+    </div>
+    <div id="large-list" class="muted" style="font-size:13px">Les fichiers sont envoyés à la corbeille, vous pouvez donc les restaurer.</div>
+  </section>
+</main>
+
+<!-- ========================= DÉMARRAGE ========================= -->
+<main class="view" id="view-startup">
+  <section class="card">
+    <h3>Programmes lancés au démarrage <span class="tag" id="st-t"></span></h3>
+    <p class="muted" style="margin:0 0 12px;font-size:13px">Désactiver un programme accélère le démarrage de Windows. C'est réversible, comme dans le Gestionnaire des tâches.</p>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th style="cursor:default">Programme</th><th style="cursor:default">Commande</th><th style="cursor:default">Portée</th><th style="cursor:default">Source</th><th class="num" style="cursor:default">Activé</th></tr></thead>
+      <tbody id="st-list"><tr><td colspan="5" class="empty">Chargement…</td></tr></tbody>
+    </table></div>
+  </section>
+</main>
+
+<div class="modal" id="gmodal"><div class="box" style="width:min(480px,92vw)">
+  <h4 id="g-title">Choisir le GPU</h4>
+  <p id="g-text" style="margin-bottom:14px"></p>
+  <label class="gopt"><input type="radio" name="gp" value="2"><div><b>⚡ Hautes performances — NVIDIA</b><span id="g-nv">Carte dédiée : plus rapide pour les jeux, la 3D et la vidéo, consomme plus de batterie</span></div></label>
+  <label class="gopt"><input type="radio" name="gp" value="1"><div><b>🔋 Économie d'énergie — GPU intégré</b><span id="g-ig">Préserve la batterie, suffisant pour la bureautique</span></div></label>
+  <label class="gopt"><input type="radio" name="gp" value="0"><div><b>Laisser Windows décider</b><span>Réglage par défaut</span></div></label>
+  <label class="toggle" style="margin:10px 0 18px"><input type="checkbox" id="g-restart" checked> Redémarrer l'application maintenant pour appliquer</label>
+  <div class="act"><button class="btn ghost" id="g-no">Annuler</button><button class="btn red" id="g-yes" style="background:#76b900;border-color:#76b900;color:#0b0f17">Appliquer</button></div>
+</div></div>
+
+<div class="modal" id="modal"><div class="box">
+  <h4 id="m-title">Fermer l'application ?</h4>
+  <p id="m-text"></p>
+  <div class="act"><button class="btn ghost" id="m-no">Annuler</button><button class="btn red" id="m-yes">Fermer</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<!-- Écran d'accueil : affiché tant que l'agent n'est pas détecté sur le PC du visiteur -->
+<div id="onboard">
+  <div class="ob-box">
+    <div class="logo" style="width:56px;height:56px;font-size:24px;border-radius:14px;margin:0 auto 18px">◈</div>
+    <h2>Surveillez et nettoyez votre PC</h2>
+    <p class="muted">CPU, RAM, GPU, disques, applications, nettoyage des fichiers inutiles… en temps réel, dans votre navigateur.</p>
+    <a class="btn primary" id="ob-dl" href="download/PCMonitor-Agent.exe" download style="display:inline-block;text-decoration:none;margin:18px 0 6px">⬇ Télécharger l'agent pour Windows</a>
+    <div class="muted" style="font-size:12px">Windows 10 / 11 · ≈ 9 Mo · aucune installation</div>
+    <ol class="ob-steps">
+      <li><b>Téléchargez</b> et lancez <code>PCMonitor-Agent.exe</code>.<br><span class="muted">Si Windows affiche « PC protégé », cliquez sur <i>Informations complémentaires → Exécuter quand même</i>.</span></li>
+      <li>Si votre navigateur demande l'accès aux <b>appareils du réseau local</b>, cliquez sur <b>Autoriser</b>.</li>
+      <li>Le tableau de bord de <b>votre PC</b> s'affiche automatiquement.</li>
+    </ol>
+    <div class="ob-wait"><span class="spin"></span>En attente de l'agent sur ce PC…</div>
+    <p class="muted" style="font-size:11.5px;margin:16px 0 0">🔒 Vos données ne quittent jamais votre ordinateur : cette page lit directement l'agent local (127.0.0.1), rien n'est envoyé à notre serveur.</p>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+// Servie par l'agent (127.0.0.1:8765) : API relative. Servie par le site public : API = agent local.
+const LOCAL_UI = location.hostname==='127.0.0.1' && location.port==='8765';
+const API = LOCAL_UI ? '' : 'http://127.0.0.1:8765';
+// ?demo=1 : masque les informations personnelles (nom du PC, utilisateur, IP, chemins) pour les captures d'écran
+const DEMO = new URLSearchParams(location.search).has('demo');
+const priv = t => !DEMO||t==null ? t : String(t).replace(/\\Users\\[^\\"]+/gi,'\\Users\\vous');
+const HIST = 90;
+const hist = {cpu:[], ram:[], gpu:[], disk:[], down:[], up:[], dr:[], dw:[]};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let sortKey = 'cpu', sortDir = -1, expanded = new Set(), lastProcs = [], info = {};
+
+function fmtBytes(b, d=1){ if(b==null) return '—'; const u=['o','Ko','Mo','Go','To']; let i=0; while(b>=1024&&i<u.length-1){b/=1024;i++} return b.toFixed(i?d:0)+' '+u[i]; }
+function fmtRate(b){ return fmtBytes(b)+'/s'; }
+function fmtDur(s){ s=Math.floor(s); const d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60);
+  return d? `${d}j ${h}h` : h? `${h}h ${m}min` : m? `${m}min` : `${s%60}s`; }
+function push(a,v){ a.push(v); if(a.length>HIST) a.shift(); }
+function levelColor(p, base){ return p>=90? css('--danger') : p>=75? css('--warn') : base; }
+
+function ring(el, pct, color){
+  const r=31, c=2*Math.PI*r, off=c*(1-Math.min(pct,100)/100);
+  el.innerHTML = `<svg width="74" height="74"><circle cx="37" cy="37" r="${r}" stroke="#1c2436" stroke-width="7" fill="none"/>
+  <circle cx="37" cy="37" r="${r}" stroke="${color}" stroke-width="7" fill="none" stroke-linecap="round"
+   stroke-dasharray="${c}" stroke-dashoffset="${off}" style="transition:stroke-dashoffset .6s"/></svg><div class="v">${Math.round(pct)}%</div>`;
+}
+
+function setupCanvas(cv){
+  const dpr = window.devicePixelRatio||1, w = cv.clientWidth, h = cv.clientHeight;
+  if(cv.width!==w*dpr||cv.height!==h*dpr){ cv.width=w*dpr; cv.height=h*dpr; }
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h); return [ctx,w,h];
+}
+function lineChart(cv, series, opts={}){
+  const [ctx,w,h]=setupCanvas(cv); const padL=opts.axis?42:0, padB=opts.axis?4:0, padT=6;
+  let max = opts.max ?? Math.max(1, ...series.flatMap(s=>s.data))*1.15;
+  if(opts.axis){
+    ctx.font='11px Segoe UI'; ctx.fillStyle=css('--muted'); ctx.strokeStyle='#1c2436'; ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){ const y=padT+(h-padT-padB)*i/4; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w,y); ctx.stroke();
+      const v=max*(1-i/4); ctx.fillText(opts.fmt? opts.fmt(v): Math.round(v)+'%', 0, y+4); }
+  }
+  for(const s of series){
+    const d=s.data; if(d.length<2) continue;
+    const step=(w-padL)/(HIST-1), x0=padL+(HIST-d.length)*step;
+    const pts=d.map((v,i)=>[x0+i*step, padT+(h-padT-padB)*(1-v/max)]);
+    ctx.beginPath(); pts.forEach(([x,y],i)=> i?ctx.lineTo(x,y):ctx.moveTo(x,y));
+    ctx.strokeStyle=s.color; ctx.lineWidth=opts.thin?1.5:2; ctx.lineJoin='round'; ctx.stroke();
+    if(s.fill!==false){ ctx.lineTo(pts.at(-1)[0],h-padB); ctx.lineTo(pts[0][0],h-padB); ctx.closePath();
+      const g=ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,s.color+'55'); g.addColorStop(1,s.color+'00'); ctx.fillStyle=g; ctx.fill(); }
+  }
+}
+
+const palette=['#5b8cff','#a26bff','#22c55e','#f59e0b','#06b6d4','#f472b6','#ef4444','#14b8a6','#eab308','#8b5cf6'];
+function colorFor(name){ let h=0; for(const c of name) h=(h*31+c.charCodeAt(0))>>>0; return palette[h%palette.length]; }
+function miniBar(v, max, color, label){
+  const p=Math.min(100, v/max*100);
+  return `<span class="cell-bar"><span class="${v/max>.5?'heat-2':v/max>.2?'heat-1':''}">${label}</span><span class="mini"><div style="width:${p}%;background:${color}"></div></span></span>`;
+}
+
+function renderProcs(){
+  const q=$('q').value.trim().toLowerCase(), onlyWin=$('onlywin').checked;
+  let list=lastProcs.filter(p=>(!q||p.name.toLowerCase().includes(q)||p.exe.toLowerCase().includes(q)) && (!onlyWin||p.window));
+  list.sort((a,b)=>{ let x=a[sortKey], y=b[sortKey]; if(sortKey==='name'){x=x.toLowerCase();y=y.toLowerCase(); return x<y?-sortDir:x>y?sortDir:0;}
+    if(sortKey==='started') return (y-x)*sortDir; return (x-y)*sortDir; });
+  document.querySelectorAll('th[data-k]').forEach(th=>th.classList.toggle('sorted', th.dataset.k===sortKey));
+  $('proc-count').textContent = `${list.length} applications · ${lastProcs.reduce((s,p)=>s+p.count,0)} processus`;
+  const totalMem = window._memTotal||1, now=Date.now()/1000;
+  if(!list.length){ $('procs').innerHTML='<tr><td colspan="7" class="empty">Aucune application trouvée</td></tr>'; return; }
+  let html='';
+  for(const p of list){
+    const key=p.name.toLowerCase(), open=expanded.has(key), col=colorFor(p.name);
+    html+=`<tr class="grp">
+      <td><div class="pname">${p.count>1?`<span class="caret ${open?'open':''}" data-exp="${key}">▸</span>`:'<span class="caret"></span>'}
+        <span class="ico" style="background:${col}">${p.name[0].toUpperCase()}</span>
+        <span class="t" title="${esc(priv(p.exe))}">${p.name}</span>
+        ${p.count>1?`<span class="cnt">${p.count}</span>`:''}${p.window?'<span class="badge">fenêtre</span>':''}${p.nvidia?'<span class="badge nv" title="Utilise actuellement la carte NVIDIA">NVIDIA</span>':''}</div></td>
+      <td class="num">${miniBar(p.cpu,100,css('--cpu'),p.cpu.toFixed(1)+'%')}</td>
+      <td class="num">${miniBar(p.mem,totalMem,css('--ram'),fmtBytes(p.mem))}</td>
+      <td class="num">${miniBar(p.gpu,100,css('--gpu'),p.gpu.toFixed(1)+'%')}</td>
+      <td class="num">${p.io>1024?fmtRate(p.io):'<span class="muted">0</span>'}</td>
+      <td class="num muted">${fmtDur(now-p.started)}</td>
+      <td class="num"><button class="btn gpu ${p.gpu_pref===2?'on':''}" data-gpu="${key}" title="Choisir le GPU de cette application">${p.gpu_pref===2?'⚡ NVIDIA':'GPU'}</button>
+        <button class="btn" data-kill="${key}">Fermer</button></td></tr>`;
+    if(open) for(const c of p.children){
+      html+=`<tr class="child"><td style="padding-left:58px">PID ${c.pid}${c.window?' · <span class="badge">fenêtre</span>':''}</td>
+        <td class="num">${c.cpu.toFixed(1)}%</td><td class="num">${fmtBytes(c.mem)}</td><td class="num">${c.gpu.toFixed(1)}%</td>
+        <td class="num">${c.io>1024?fmtRate(c.io):'0'}</td><td></td>
+        <td class="num"><button class="btn" data-killpid="${c.pid}" data-name="${p.name}">Fin</button></td></tr>`;
+    }
+  }
+  $('procs').innerHTML=html;
+}
+
+document.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir=k==='name'?1:-1;} renderProcs(); });
+$('q').oninput=renderProcs; $('onlywin').onchange=renderProcs;
+$('procs').onclick=e=>{
+  const exp=e.target.closest('[data-exp]'); if(exp){ const k=exp.dataset.exp; expanded.has(k)?expanded.delete(k):expanded.add(k); renderProcs(); return; }
+  const k=e.target.closest('[data-kill]'); if(k){ const p=lastProcs.find(x=>x.name.toLowerCase()===k.dataset.kill); if(p) confirmKill(p.name, p.pids); return; }
+  const gb=e.target.closest('[data-gpu]'); if(gb){ const p=lastProcs.find(x=>x.name.toLowerCase()===gb.dataset.gpu); if(p) openGpu(p); return; }
+  const kp=e.target.closest('[data-killpid]'); if(kp) confirmKill(`${kp.dataset.name} (PID ${kp.dataset.killpid})`, [+kp.dataset.killpid]);
+};
+
+function confirmKill(name, pids){
+  askConfirm(`Fermer « ${name} » ?`,
+    pids.length>1 ? `${pids.length} processus seront arrêtés. Les données non enregistrées seront perdues.` : `Le processus sera arrêté. Les données non enregistrées seront perdues.`,
+    'Fermer', async()=>{
+      try{
+        const j=await post('/api/kill',{pids}); const bad=j.results.filter(x=>!x.ok);
+        toast(bad.length? `Échec pour ${bad.length} processus : ${bad[0].error}` : 'Application fermée ✓', !!bad.length);
+      }catch(e){ toast('Erreur : '+e.message, true); }
+    });
+}
+$('m-no').onclick=()=>$('modal').classList.remove('show');
+$('modal').onclick=e=>{ if(e.target.id==='modal') $('modal').classList.remove('show'); };
+$('m-yes').onclick=()=>{ $('modal').classList.remove('show'); const cb=confirmCb; confirmCb=null; cb&&cb(); };
+function toast(msg, err){ const t=$('toast'); t.textContent=msg; t.className='toast show'+(err?' err':''); clearTimeout(t._h); t._h=setTimeout(()=>t.className='toast',3200); }
+
+function render(s){
+  const cpu=s.cpu.total, ram=s.memory.percent;
+  const nv=s.gpu.nvidia[0];
+  const engMax = s.gpu.engines.length? Math.max(...s.gpu.engines.map(e=>e.util)) : 0;
+  const gpu = nv? Math.max(nv.util??0, engMax) : engMax;
+  const sysDisk = s.disks.find(d=>d.mount.toUpperCase().startsWith('C')) || s.disks[0];
+  push(hist.cpu,cpu); push(hist.ram,ram); push(hist.gpu,gpu); push(hist.disk,(s.disk_io.read+s.disk_io.write)/1048576);
+  push(hist.down,s.network.down); push(hist.up,s.network.up); push(hist.dr,s.disk_io.read); push(hist.dw,s.disk_io.write);
+  window._memTotal=s.memory.total;
+
+  $('uptime').textContent='Allumé depuis '+fmtDur(s.uptime);
+  ring($('r-cpu'),cpu,levelColor(cpu,css('--cpu'))); $('k-cpu').textContent=cpu.toFixed(1)+' %';
+  $('k-cpu-s').textContent=`${s.process_total} processus · ${s.cpu.per_core.length} threads`;
+  $('k-cpu-f').textContent= s.cpu.freq? (s.cpu.freq/1000).toFixed(2)+' GHz':'';
+  ring($('r-ram'),ram,levelColor(ram,css('--ram'))); $('k-ram').textContent=fmtBytes(s.memory.used);
+  $('k-ram-s').textContent=`Disponible : ${fmtBytes(s.memory.available)}`; $('k-ram-t').textContent=fmtBytes(s.memory.total,0);
+  ring($('r-gpu'),gpu,levelColor(gpu,css('--gpu'))); $('k-gpu').textContent=gpu.toFixed(0)+' %';
+  $('k-gpu-s').textContent= nv? `${nv.temp??'—'} °C · VRAM ${Math.round(nv.mem_used)}/${Math.round(nv.mem_total)} Mo` : (s.gpu.adapters[0]?.name||'—');
+  $('k-gpu-t').textContent= nv? nv.name.replace('NVIDIA GeForce ','') : '';
+  if(sysDisk){ ring($('r-disk'),sysDisk.percent,levelColor(sysDisk.percent,css('--disk'))); $('k-disk').textContent=fmtBytes(sysDisk.free)+' libres';
+    $('k-disk-s').textContent=`${sysDisk.mount} · ${fmtBytes(sysDisk.used)} / ${fmtBytes(sysDisk.total)}`; $('k-disk-t').textContent=fmtRate(s.disk_io.read+s.disk_io.write); }
+  $('k-down').textContent=fmtRate(s.network.down); $('k-up').textContent=fmtRate(s.network.up);
+  $('k-net-t').textContent=s.network.interfaces[0]?.name||'';
+
+  lineChart($('s-cpu'),[{data:hist.cpu,color:css('--cpu')}],{max:100,thin:1});
+  lineChart($('s-ram'),[{data:hist.ram,color:css('--ram')}],{max:100,thin:1});
+  lineChart($('s-gpu'),[{data:hist.gpu,color:css('--gpu')}],{max:100,thin:1});
+  lineChart($('s-disk'),[{data:hist.disk,color:css('--disk')}],{thin:1});
+  lineChart($('s-net'),[{data:hist.down,color:css('--net')},{data:hist.up,color:css('--up'),fill:false}],{thin:1});
+  lineChart($('c-usage'),[{data:hist.ram,color:css('--ram')},{data:hist.gpu,color:css('--gpu')},{data:hist.cpu,color:css('--cpu')}],{max:100,axis:1});
+  lineChart($('c-net'),[{data:hist.down,color:css('--net')},{data:hist.up,color:css('--up')}],{axis:1,fmt:v=>fmtBytes(v,0)});
+  lineChart($('c-disk'),[{data:hist.dr,color:css('--disk')},{data:hist.dw,color:'#fb7185'}],{axis:1,fmt:v=>fmtBytes(v,0)});
+
+  // cœurs
+  const cores=$('cores'); if(cores.children.length!==s.cpu.per_core.length)
+    cores.innerHTML=s.cpu.per_core.map((_,i)=>`<div class="core"><div class="bar"><div></div></div><b>0%</b><br>#${i}</div>`).join('');
+  s.cpu.per_core.forEach((v,i)=>{ const c=cores.children[i]; c.querySelector('.bar div').style.height=v+'%'; c.querySelector('b').textContent=Math.round(v)+'%'; });
+  $('cores-t').textContent=`Changements de contexte : ${(s.cpu.ctx_switches/1e6).toFixed(1)} M`;
+
+  // disques
+  $('disks').innerHTML=s.disks.map(d=>`<div class="disk"><div class="top"><b>${d.mount} <span>${d.fs}</span></b><span>${fmtBytes(d.free)} libres sur ${fmtBytes(d.total)}</span></div>
+    <div class="bar-h"><div style="width:${d.percent}%;background:${levelColor(d.percent,css('--disk'))}"></div></div></div>`).join('')
+    + `<div class="stats" style="margin-bottom:12px"><div class="stat"><div class="l">Lecture</div><div class="n">${fmtRate(s.disk_io.read)}</div></div>
+       <div class="stat"><div class="l">Écriture</div><div class="n">${fmtRate(s.disk_io.write)}</div></div></div>`;
+
+  // réseau
+  $('n-recv').textContent=fmtBytes(s.network.recv); $('n-sent').textContent=fmtBytes(s.network.sent);
+  $('n-conn').textContent=s.network.connections??'—'; $('n-ip').textContent=DEMO?'192.168.1.20':(s.network.interfaces[0]?.ip||'—');
+
+  // GPU
+  let g='';
+  for(const n of s.gpu.nvidia){
+    g+=`<div class="gpu-head"><b>${n.name}</b><span class="muted">${n.util??0}%</span></div>
+    <div class="bar-h" style="margin-bottom:14px"><div style="width:${n.util??0}%;background:${css('--gpu')}"></div></div>
+    <div class="stats">
+      <div class="stat"><div class="l">Température</div><div class="n" style="color:${(n.temp??0)>80?css('--danger'):(n.temp??0)>70?css('--warn'):'inherit'}">${n.temp??'—'} °C</div></div>
+      <div class="stat"><div class="l">VRAM</div><div class="n">${Math.round(n.mem_used)} / ${Math.round(n.mem_total)} Mo</div></div>
+      <div class="stat"><div class="l">Fréquence GPU</div><div class="n">${n.clock??'—'} MHz</div></div>
+      <div class="stat"><div class="l">Fréquence mémoire</div><div class="n">${n.mem_clock??'—'} MHz</div></div>
+      <div class="stat"><div class="l">Consommation</div><div class="n">${n.power!=null?n.power+' W':'n/d'}</div></div>
+      <div class="stat"><div class="l">Ventilateur</div><div class="n">${n.fan!=null?n.fan+' %':'n/d'}</div></div>
+    </div>`;
+  }
+  const others=s.gpu.adapters.filter(a=>!s.gpu.nvidia.some(n=>a.name&&a.name.includes(n.name.replace('NVIDIA ',''))));
+  if(others.length) g+=`<div style="margin-top:14px">${others.map(a=>`<div class="gpu-head"><b>${a.name}</b><span class="muted">pilote ${a.driver||''}</span></div>`).join('')}</div>`;
+  if(s.gpu.engines.length) g+=`<div class="muted" style="font-size:12px;margin:8px 0 6px">Charge par adaptateur (Windows)</div>`+
+    s.gpu.engines.map((e,i)=>`<div class="disk"><div class="top"><span>Adaptateur ${i+1}</span><span>${e.util.toFixed(1)}%</span></div><div class="bar-h"><div style="width:${e.util}%;background:${css('--gpu')}"></div></div></div>`).join('');
+  $('gpu-detail').innerHTML=g||'Aucune carte graphique détectée'; window._adapters=s.gpu.adapters;
+
+  // mémoire
+  $('memdetail').innerHTML=`<div class="stat"><div class="l">Utilisée</div><div class="n">${fmtBytes(s.memory.used)}</div></div>
+    <div class="stat"><div class="l">Disponible</div><div class="n">${fmtBytes(s.memory.available)}</div></div>
+    <div class="stat"><div class="l">Fichier d'échange</div><div class="n">${fmtBytes(s.memory.swap_used)} / ${fmtBytes(s.memory.swap_total,0)}</div></div>
+    <div class="stat"><div class="l">Charge swap</div><div class="n">${s.memory.swap_percent}%</div></div>`;
+
+  // batterie
+  if(s.battery){ $('bat-card').style.display=''; const b=s.battery;
+    $('bat').innerHTML=`<div class="gpu-head"><b>${Math.round(b.percent)} %</b><span class="muted">${b.plugged?'⚡ En charge / secteur':b.secsleft?'≈ '+fmtDur(b.secsleft)+' restantes':'Sur batterie'}</span></div>
+    <div class="bar-h"><div style="width:${b.percent}%;background:${b.percent<20?css('--danger'):css('--ok')}"></div></div>`; }
+
+  lastProcs=s.processes; renderProcs(); renderRamCard(s);
+}
+
+/* ===================== API ===================== */
+async function post(url, body){
+  const r=await fetch(API+url,{method:'POST',headers:{'Content-Type':'application/json','X-PCMon':'1'},body:JSON.stringify(body||{})});
+  if(!r.ok) throw new Error('HTTP '+r.status); return r.json();
+}
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ===================== Onglets ===================== */
+let startupLoaded=false;
+$('tabs').onclick=e=>{ const b=e.target.closest('button'); if(!b) return;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='view-'+b.dataset.v));
+  if(b.dataset.v==='startup'&&!startupLoaded) loadStartup();
+  if(b.dataset.v==='dash') tick();
+};
+
+/* ===================== Nettoyage ===================== */
+let junk=[], junkSel=new Set();
+function renderJunk(){
+  const groups={}; junk.forEach(j=>(groups[j.group]??=[]).push(j));
+  let h='';
+  for(const [g,items] of Object.entries(groups)){
+    h+=`<div class="grp-t">${g}</div>`;
+    for(const j of items){
+      h+=`<label class="jrow"><input type="checkbox" data-j="${j.id}" ${junkSel.has(j.id)?'checked':''} ${j.size?'':'disabled'}>
+        <div class="n"><b>${esc(j.name)}</b> ${j.running?'<span class="warn">ouvert – fermez-le pour tout nettoyer</span>':''}<div>${esc(j.desc)} · ${j.count.toLocaleString('fr-FR')} fichiers</div></div>
+        <div class="s ${j.size>1073741824?'heat-2':j.size>104857600?'heat-1':''}">${j.size?fmtBytes(j.size):'<span class="muted">vide</span>'}</div></label>`;
+    }
+  }
+  $('junk-list').innerHTML=h||'Rien à nettoyer 🎉'; $('junk-list').classList.remove('muted');
+  updateJunkTotals();
+}
+function updateJunkTotals(){
+  const total=junk.reduce((s,j)=>s+j.size,0), sel=junk.filter(j=>junkSel.has(j.id)).reduce((s,j)=>s+j.size,0);
+  $('junk-total').textContent=fmtBytes(total)+' récupérables';
+  $('junk-sel').textContent=`${fmtBytes(sel)} sélectionnés`;
+  $('btn-clean').textContent= sel? `Nettoyer ${fmtBytes(sel)}` : 'Nettoyer'; $('btn-clean').disabled=!sel;
+}
+$('junk-list').onchange=e=>{ const id=e.target.dataset.j; if(!id) return; e.target.checked?junkSel.add(id):junkSel.delete(id); updateJunkTotals(); };
+
+async function scanJunk(){
+  const b=$('btn-scan'); b.disabled=true; b.innerHTML='<span class="spin"></span>Analyse…';
+  $('junk-sub').textContent='Analyse en cours, cela peut prendre quelques secondes…';
+  try{
+    const r=await (await fetch(API+'/api/clean/scan')).json(); junk=r.items;
+    junkSel=new Set(junk.filter(j=>j.size>0 && !['wu','logs'].includes(j.id)).map(j=>j.id));
+    const d=r.disk; ring($('r-clean'),d.used/d.total*100,levelColor(d.used/d.total*100,css('--disk')));
+    $('r-clean').querySelector('svg').setAttribute('viewBox','0 0 74 74'); $('r-clean').querySelector('svg').setAttribute('width','96'); $('r-clean').querySelector('svg').setAttribute('height','96');
+    $('junk-sub').textContent=`Disque système : ${fmtBytes(d.free)} libres sur ${fmtBytes(d.total)}`;
+    renderJunk();
+  }catch(e){ toast('Analyse impossible : '+e.message,true); }
+  b.disabled=false; b.textContent='Analyser à nouveau';
+}
+$('btn-scan').onclick=scanJunk;
+$('btn-clean').onclick=()=>{
+  const ids=[...junkSel], sel=junk.filter(j=>junkSel.has(j.id));
+  askConfirm('Nettoyer les fichiers inutiles ?',
+    `${sel.length} catégories, ${fmtBytes(sel.reduce((s,j)=>s+j.size,0))}. Ces fichiers seront supprimés définitivement (la corbeille sera vidée si elle est cochée). Les fichiers verrouillés sont ignorés.`,
+    'Nettoyer', async()=>{
+      const b=$('btn-clean'); b.disabled=true; b.innerHTML='<span class="spin"></span>Nettoyage…';
+      try{ const r=await post('/api/clean',{ids}); const freed=r.results.reduce((s,x)=>s+x.freed,0), failed=r.results.reduce((s,x)=>s+x.failed,0);
+        toast(`${fmtBytes(freed)} libérés ✓`+(failed?` · ${failed} fichiers en cours d'utilisation ignorés`:''));
+        $('admin-note').style.display = (failed && !info.admin)?'':'none';
+      }catch(e){ toast('Erreur : '+e.message,true); }
+      await scanJunk();
+    });
+};
+
+/* RAM */
+function renderRamCard(s){
+  const m=s.memory; ring($('r-ram2'),m.percent,levelColor(m.percent,css('--ram')));
+  $('ram-av').textContent=fmtBytes(m.available); $('ram-t').textContent=`${fmtBytes(m.used)} / ${fmtBytes(m.total,0)}`;
+  const bg=s.processes.filter(p=>!p.window && p.mem>80*1048576).sort((a,b)=>b.mem-a.mem).slice(0,6);
+  $('bg-apps').innerHTML= bg.length? bg.map(p=>`<div class="jrow" style="cursor:default;padding:7px 4px">
+     <span class="ico" style="width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-weight:700;font-size:11px;color:#fff;background:${colorFor(p.name)}">${esc(p.name[0].toUpperCase())}</span>
+     <div class="n"><b>${esc(p.name)}</b><div>${p.count} processus · sans fenêtre</div></div><div class="s">${fmtBytes(p.mem)}</div>
+     <button class="btn sm" data-bgkill="${esc(p.name.toLowerCase())}">Fermer</button></div>`).join('') : 'Aucune application lourde en arrière-plan 👍';
+}
+$('bg-apps').onclick=e=>{ const k=e.target.closest('[data-bgkill]'); if(!k) return; const p=lastProcs.find(x=>x.name.toLowerCase()===k.dataset.bgkill); if(p) confirmKill(p.name,p.pids); };
+$('btn-ram').onclick=async()=>{
+  const b=$('btn-ram'); b.disabled=true; b.innerHTML='<span class="spin"></span>Libération…';
+  try{ const r=await post('/api/ram');
+    $('ram-res').innerHTML=`✓ <b style="color:var(--ok)">${fmtBytes(r.freed)}</b> libérés · ${r.processes} processus optimisés. Windows recharge automatiquement ce dont les applications ont besoin.`;
+    toast(`${fmtBytes(r.freed)} de RAM libérés`);
+  }catch(e){ toast('Erreur : '+e.message,true); }
+  b.disabled=false; b.textContent='Libérer la RAM'; tick();
+};
+
+/* Gros fichiers */
+let large=[], largeSel=new Set();
+const extIcon=e=>({mp4:'🎬',mkv:'🎬',avi:'🎬',mov:'🎬',iso:'💿',zip:'🗜',rar:'🗜','7z':'🗜',exe:'⚙',msi:'⚙',vhdx:'💽',vmdk:'💽',psd:'🎨',pst:'✉'}[e]||'📄');
+function renderLarge(partial){
+  if(!large.length){ $('large-list').innerHTML='Aucun fichier de cette taille trouvé.'; $('btn-large-del').style.display='none'; $('large-t').textContent=''; return; }
+  $('large-t').textContent=`${large.length} fichiers · ${fmtBytes(large.reduce((s,f)=>s+f.size,0))}`+(partial?' (analyse partielle)':'');
+  $('large-list').innerHTML=`<table><thead><tr><th style="width:30px"></th><th>Fichier</th><th>Emplacement</th><th class="num">Modifié</th><th class="num">Taille</th><th></th></tr></thead><tbody>`+
+    large.map((f,i)=>`<tr><td><input type="checkbox" data-l="${i}" ${largeSel.has(f.path)?'checked':''} style="accent-color:var(--cpu)"></td>
+    <td>${extIcon(f.ext)} ${esc(f.name)}</td><td class="cmd" title="${esc(f.path)}">${esc(f.path.slice(0,f.path.length-f.name.length))}</td>
+    <td class="num muted">${new Date(f.mtime*1000).toLocaleDateString('fr-FR')}</td><td class="num"><b>${fmtBytes(f.size)}</b></td>
+    <td class="num"><button class="btn sm blue" data-rv="${i}">Afficher</button></td></tr>`).join('')+'</tbody></table>';
+  updateLargeBtn();
+}
+function updateLargeBtn(){ const n=largeSel.size, b=$('btn-large-del'); b.style.display=n?'':'none';
+  b.textContent=`Mettre à la corbeille (${n} · ${fmtBytes(large.filter(f=>largeSel.has(f.path)).reduce((s,f)=>s+f.size,0))})`; }
+$('large-list').onchange=e=>{ const i=e.target.dataset.l; if(i==null) return; const p=large[+i].path; e.target.checked?largeSel.add(p):largeSel.delete(p); updateLargeBtn(); };
+$('large-list').onclick=e=>{ const r=e.target.closest('[data-rv]'); if(r) post('/api/reveal',{path:large[+r.dataset.rv].path}); };
+$('btn-large').onclick=async()=>{
+  const b=$('btn-large'); b.disabled=true; b.innerHTML='<span class="spin"></span>Recherche…'; largeSel.clear();
+  try{ const r=await (await fetch(API+'/api/large?min='+$('large-min').value)).json(); large=r.files; renderLarge(r.partial); }
+  catch(e){ toast('Erreur : '+e.message,true); }
+  b.disabled=false; b.textContent='Rechercher';
+};
+$('btn-large-del').onclick=()=>{
+  const paths=[...largeSel];
+  askConfirm('Mettre ces fichiers à la corbeille ?',`${paths.length} fichier(s). Vous pourrez les restaurer depuis la corbeille.`,'Mettre à la corbeille',async()=>{
+    try{ const r=await post('/api/large/recycle',{paths}); const ok=r.results.filter(x=>x.ok).map(x=>x.path);
+      large=large.filter(f=>!ok.includes(f.path)); ok.forEach(p=>largeSel.delete(p)); renderLarge();
+      toast(ok.length===paths.length?`${ok.length} fichier(s) déplacé(s) dans la corbeille ✓`:`${paths.length-ok.length} fichier(s) non déplacé(s) (en cours d'utilisation ?)`, ok.length!==paths.length);
+    }catch(e){ toast('Erreur : '+e.message,true); }
+  });
+};
+
+/* ===================== Démarrage ===================== */
+async function loadStartup(){
+  try{ const r=await (await fetch(API+'/api/startup')).json(); startupLoaded=true;
+    const on=r.items.filter(i=>i.enabled).length; $('st-t').textContent=`${on} activés sur ${r.items.length}`;
+    $('st-list').innerHTML= r.items.length? r.items.map(i=>`<tr>
+      <td><div class="pname"><span class="ico" style="background:${colorFor(i.name)}">${esc(i.name[0]?.toUpperCase())}</span><span class="t">${esc(i.name)}</span></div></td>
+      <td><div class="cmd" title="${esc(priv(i.command))}">${esc(priv(i.command))}</div></td><td class="muted">${i.scope}</td><td class="muted">${i.source}</td>
+      <td class="num"><label class="switch"><input type="checkbox" data-st="${esc(i.id)}" ${i.enabled?'checked':''}><span></span></label></td></tr>`).join('')
+      : '<tr><td colspan="5" class="empty">Aucun programme au démarrage</td></tr>';
+  }catch(e){ toast('Erreur : '+e.message,true); }
+}
+$('st-list').onchange=async e=>{ const id=e.target.dataset.st; if(!id) return;
+  try{ const r=await post('/api/startup',{id,enabled:e.target.checked});
+    if(!r.ok){ e.target.checked=!e.target.checked; toast(r.error,true); } else toast(e.target.checked?'Activé au démarrage':'Désactivé au démarrage ✓');
+  }catch(err){ e.target.checked=!e.target.checked; toast('Erreur : '+err.message,true); }
+  loadStartup();
+};
+
+/* ===================== Choix du GPU ===================== */
+let gpuApp=null;
+function openGpu(p){
+  gpuApp=p;
+  $('g-title').textContent=`GPU pour « ${p.name} »`;
+  $('g-text').innerHTML= (p.nvidia?'<span class="badge nv">NVIDIA</span> Utilise actuellement la carte NVIDIA. ':'')+
+    "Windows applique ce choix au <b>démarrage</b> de l'application. Une application déjà lancée doit donc redémarrer (enregistrez votre travail avant).";
+  document.querySelectorAll('input[name=gp]').forEach(r=>r.checked=(+r.value===(p.gpu_pref||0)));
+  const ad=(window._adapters||[]); const nv=ad.find(a=>/nvidia/i.test(a.name||'')), ig=ad.find(a=>!/nvidia/i.test(a.name||''));
+  if(nv) $('g-nv').textContent=nv.name+' — plus rapide pour les jeux, la 3D et la vidéo, consomme plus';
+  if(ig) $('g-ig').textContent=ig.name+' — préserve la batterie, suffisant pour la bureautique';
+  $('gmodal').classList.add('show');
+}
+$('g-no').onclick=()=>$('gmodal').classList.remove('show');
+$('gmodal').onclick=e=>{ if(e.target.id==='gmodal') $('gmodal').classList.remove('show'); };
+$('g-yes').onclick=async()=>{
+  const p=gpuApp, pref=+(document.querySelector('input[name=gp]:checked')?.value||0), restart=$('g-restart').checked;
+  $('gmodal').classList.remove('show');
+  if(!p.exe){ toast("Chemin de l'application inconnu",true); return; }
+  try{
+    const r=await post('/api/gpu/pref',{exe:p.exe,pref});
+    if(!r.ok){ toast(r.error,true); return; }
+    p.gpu_pref=pref; renderProcs();
+    if(!restart){ toast('Préférence enregistrée : appliquée au prochain lancement ✓'); return; }
+    toast(`Redémarrage de ${p.name}…`);
+    const rr=await post('/api/gpu/restart',{pids:p.pids});
+    toast(rr.ok? `${p.name} relancée ${pref===2?'sur le GPU NVIDIA ⚡':''}✓` : rr.error, !rr.ok);
+  }catch(e){ toast('Erreur : '+e.message,true); }
+};
+
+/* modale générique */
+let confirmCb=null;
+function askConfirm(title,text,yes,cb){ $('m-title').textContent=title; $('m-text').textContent=text; $('m-yes').textContent=yes; confirmCb=cb; $('modal').classList.add('show'); }
+
+function renderInfo(i){
+  if(DEMO){ i={...i, hostname:'MON-PC', user:'MON-PC\\utilisateur'}; }
+  info=i; $('host').textContent=i.hostname||'PC Monitor'; $('osinfo').textContent=i.os||'';
+  $('sysinfo').innerHTML=[['Utilisateur',i.user],['Processeur',i.cpu_name],['Cœurs / Threads',`${i.cores_physical} / ${i.cores_logical}`],
+    ['Fréq. max',i.cpu_max_freq?(i.cpu_max_freq/1000).toFixed(2)+' GHz':'—'],['Démarré le',new Date(i.boot_time*1000).toLocaleString('fr-FR')]]
+    .map(([k,v])=>`<dt>${k}</dt><dd title="${v}">${v??'—'}</dd>`).join('');
+}
+
+let fails=0;
+async function tick(){
+  try{
+    const s=await (await fetch(API+'/api/stats',{cache:'no-store'})).json();
+    fails=0; $('onboard').classList.remove('show');
+    if(s.cpu){ render(s); $('dot').classList.remove('off'); $('livetxt').textContent='En direct'; }
+    if(!info.hostname) renderInfo(await (await fetch(API+'/api/info')).json());
+  }catch(e){
+    $('dot').classList.add('off'); $('livetxt').textContent='Agent non détecté';
+    // sur le site public : après 2 échecs, on propose d'installer l'agent
+    if(!LOCAL_UI && ++fails>=2){ $('onboard').classList.add('show'); info={}; }
+  }
+}
+$('btn-quit').onclick=()=>askConfirm("Arrêter l'agent ?","La surveillance s'arrêtera jusqu'à ce que vous relanciez PCMonitor-Agent.exe.","Arrêter",
+  async()=>{ try{ await post('/api/quit'); }catch(e){} toast("Agent arrêté"); });
+tick(); setInterval(tick,1500);
+// #clean ou #startup dans l'URL : ouvre directement l'onglet
+function tabFromHash(){ const v=location.hash.slice(1); const b=document.querySelector(`#tabs button[data-v="${v}"]`); if(b) b.click(); }
+tabFromHash(); window.addEventListener('hashchange', tabFromHash);
+window.addEventListener('resize',()=>lastProcs.length&&tick());
+</script>
+</body>
+</html>

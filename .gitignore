@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+
+# Build PyInstaller
+build/
+*.spec
+
+# Généré par build_agent.bat (propre à chaque domaine)
+agent/agent_config.py
+site/download/*.exe
+site/index.html
+
+# Déploiement
+deploy/.env
