@@ -13,3 +13,11 @@ site/index.html
 
 # Déploiement
 deploy/.env
+
+# Partie déploiement (site web + VPS) : gardée en local, non publiée
+deploy/
+deploy.ps1
+build_agent.bat
+DEPLOIEMENT.md
+site/
+docs/screenshots/accueil-site.png

@@ -54,15 +54,9 @@ python agent/server.py --local-ui
 ```
 Then open http://127.0.0.1:8765. On Windows you can also double-click `Lancer_PC_Monitor.bat`. Run it as administrator to clean system folders too.
 
-## Host it as a website
-You can publish the dashboard on your own domain. Each visitor downloads a small agent (`PCMonitor-Agent.exe`, about 9 MB, no install) and sees **their own PC** in the browser. Their data never leaves their machine. See [DEPLOIEMENT.md](DEPLOIEMENT.md) for the VPS, domain and automatic HTTPS setup with Caddy and Docker.
-
 ## Security and privacy
-- The agent listens on `127.0.0.1` only. There is no telemetry and no account.
-- In website mode, the agent:
-  - checks the CORS origin against an allow-list;
-  - blocks DNS rebinding by checking the `Host` header;
-  - requires a custom header for every action.
+- Everything stays on your PC: the app listens on `127.0.0.1` only. There is no telemetry and no account.
+- Other websites can neither read your data nor trigger actions: the CORS origin and the `Host` header are checked (DNS rebinding protection), and every action requires a custom header.
 - System processes cannot be killed. Large files go to the recycle bin, and every deletion asks for confirmation first.
 
 ## License

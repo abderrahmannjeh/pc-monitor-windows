@@ -11,7 +11,7 @@ Une alternative légère, gratuite et open source au Gestionnaire des tâches, �
 ![NVIDIA](https://img.shields.io/badge/GPU-NVIDIA%20%7C%20Intel-76B900?logo=nvidia&logoColor=white)
 ![Licence](https://img.shields.io/badge/licence-MIT-green)
 
-[English version](README.en.md) · [Installation](#installation) · [Fonctionnalités](#fonctionnalités) · [Mise en ligne](DEPLOIEMENT.md)
+[English version](README.en.md) · [Installation](#installation) · [Fonctionnalités](#fonctionnalités) · [FAQ](#questions-fréquentes)
 
 ![Tableau de bord PC Monitor : CPU, RAM, GPU, disque et réseau en temps réel](docs/screenshots/dashboard.png)
 
@@ -75,7 +75,6 @@ Activez ou désactivez les programmes lancés au démarrage de Windows pour **d�
 
 ## Installation
 
-### Option 1 : en local (le plus simple)
 ```bash
 git clone https://github.com/abderrahmannjeh/pc-monitor-windows.git
 cd pc-monitor-windows
@@ -90,19 +89,9 @@ python agent/server.py --local-ui
 
 > 💡 Pour nettoyer aussi les fichiers système (Windows Update, journaux), lancez le programme **en tant qu'administrateur**.
 
-### Option 2 : comme site web, avec un agent à télécharger
-Publiez le tableau de bord sur votre propre domaine. Chaque visiteur télécharge un petit agent (`PCMonitor-Agent.exe`, environ 9 Mo, sans installation) et voit **son propre PC** dans le navigateur.
-
-![Écran d'accueil du site : téléchargement de l'agent Windows](docs/screenshots/accueil-site.png)
-
-Le guide complet (VPS, nom de domaine, HTTPS automatique avec Caddy et Docker) est dans **[DEPLOIEMENT.md](DEPLOIEMENT.md)**. En résumé :
-```bash
-.\deploy.ps1 -Domain monitor.votredomaine.com -Server IP_DU_VPS
-```
-
 ## Sécurité et vie privée
-- 🔒 **Tout reste local** : l'agent écoute uniquement sur `127.0.0.1`, aucune télémétrie, aucun compte.
-- 🛡️ En mode site web, l'agent n'accepte que **votre domaine** (vérification CORS de l'origine), bloque les attaques par **DNS rebinding** (vérification de l'en-tête `Host`) et exige un en-tête personnalisé pour toute action.
+- 🔒 **Tout reste local** : le programme écoute uniquement sur `127.0.0.1`, aucune télémétrie, aucun compte.
+- 🛡️ Les autres sites web ne peuvent ni lire vos données ni lancer d'actions : l'origine (CORS) et l'en-tête `Host` sont vérifiés (protection contre le DNS rebinding), et un en-tête personnalisé est exigé pour toute action.
 - ✋ Les processus système et ceux des autres utilisateurs ne peuvent pas être fermés.
 - ♻️ Les gros fichiers vont à la corbeille. Seuls les caches régénérables sont supprimés définitivement, et toujours après confirmation.
 
@@ -113,9 +102,7 @@ agent/
   cleaner.py       nettoyage, libération de la RAM, gros fichiers, programmes au démarrage
   gpu_pref.py      choix du GPU NVIDIA ou Intel par application
   dashboard.html   interface web (HTML, CSS et JavaScript, sans dépendance)
-deploy/            Caddyfile, docker-compose.yml, install.sh (VPS Ubuntu)
-build_agent.bat    compile l'agent en .exe avec PyInstaller
-deploy.ps1         compile, envoie et installe sur le VPS en une commande
+Lancer_PC_Monitor.bat   lancement en un double-clic
 ```
 
 ## Questions fréquentes
