@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # PC Monitor: Windows system monitor and PC cleaner
 
@@ -47,7 +47,7 @@ A lightweight, free and open-source alternative to Task Manager, CCleaner and Cl
 
 ## Quick start
 ```bash
-git clone https://github.com/YOUR-ACCOUNT/pc-monitor-windows.git
+git clone https://github.com/abderrahmannjeh/pc-monitor-windows.git
 cd pc-monitor-windows
 pip install -r requirements.txt
 python agent/server.py --local-ui

@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # PC Monitor : moniteur système et nettoyeur de PC pour Windows
 
@@ -77,7 +77,7 @@ Activez ou désactivez les programmes lancés au démarrage de Windows pour **d�
 
 ### Option 1 : en local (le plus simple)
 ```bash
-git clone https://github.com/VOTRE-COMPTE/pc-monitor-windows.git
+git clone https://github.com/abderrahmannjeh/pc-monitor-windows.git
 cd pc-monitor-windows
 ```
 Double-cliquez ensuite sur **`Lancer_PC_Monitor.bat`**. Il installe `psutil` puis ouvre le tableau de bord sur http://127.0.0.1:8765.
